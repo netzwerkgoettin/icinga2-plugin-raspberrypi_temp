@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Script by Marianne M. Spiller <github@spiller.me>
+# 20180118
+
+PROG=$( basename $0 )
+STATE_OK=0
+STATE_WARNING=1
+STATE_CRITICAL=2
+STATE_UNKNOWN=3
+
+_usage() {
+  echo "Usage: $PROG [-w warning_value] [-c critical_value]"
+  echo "   -w: warning threshold, default 60°C when unset"
+  echo "   -c: critical threshold, default 75°C when unset"
+  exit $STATE_WARNING 
+}
+
+_getopts() {
+  while getopts 'hc:w:' OPT ; do
+    case $OPT in
+        c)
+	  CRITICAL_VALUE=$OPTARG;
+	  ;;
+        w)
+	  WARNING_VALUE=$OPTARG;
+	  ;;
+	'')
+	  _usage
+	  break
+	  ;;
+	*)
+	  echo "Invalid option --$OPTARG1"
+	  _usage
+	  exit $STATE_WARNING
+	  ;;
+    esac
+  done
+}
+
+_check_prog() {
+
+  if [ ! -z "$1" ] ; then
+    TOCHECK=$( which $1 )
+    if [ -z "$TOCHECK" ] ; then
+      echo "UNKNOWN - cannot find $1"
+      exit $STATE_UNKNOWN
+    fi
+  fi
+}
+
+_performance_data() {
+cat <<- _EOF_
+|temp=$TEMP;$WARNING_VALUE;$CRITICAL_VALUE;0;100
+_EOF_
+}
+
+_check_prog awk
+_check_prog bc
+_getopts $@
+
+THERMAL="/sys/class/thermal/thermal_zone0/temp"
+if [ ! -f "$THERMAL" ] ; then
+  echo "UNKNOWN - $THERMAL (no such file)"
+  exit $STATE_UNKNOWN
+else
+  TEMP=$( awk '{printf("%.2f\n",$1/1e3)}' $THERMAL )
+fi
+
+if [ -z "$WARNING_VALUE" ] ; then
+  ##---- Defaults to 60°C when unset
+  WARNING_VALUE="60"
+fi
+if [ -z "$CRITICAL_VALUE" ] ; then
+  ##---- Defaults to 75°C when unset
+  CRITICAL_VALUE="75"
+fi
+
+##---- State CRITICAL?
+COMPARISON=`echo "if($TEMP>=$CRITICAL_VALUE) 1 else 0;" | bc`
+if [ $COMPARISON -eq 1 ] ; then
+  echo "CRITICAL: Current system temperature $TEMP°C is way too high!"
+  _performance_data
+  exit $STATE_CRITICAL
+fi
+
+##---- State WARNING?
+COMPARISON=`echo "if($TEMP>=$WARNING_VALUE) 1 else 0;" | bc`
+if [ $COMPARISON -eq 1 ] ; then
+  echo "WARNING: Current system temperature is $TEMP°C, which is a bit too much..."
+  _performance_data
+  exit $STATE_WARNING
+fi
+
+##---- State OK!
+echo "OK: Current system temperature is $TEMP°C."
+_performance_data
+exit $STATE_OK
