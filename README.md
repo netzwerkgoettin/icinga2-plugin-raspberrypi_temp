@@ -21,8 +21,8 @@ OK: Current system temperature is 45.08°C.
 
 ### Screenshots
 Example check output in Icinga Web 2.
-![Raspberry Temp in Icinga Web 2](img/raspberry_temp-IcingaWeb2.jpg | width=400)
+![Raspberry Temp in Icinga Web 2](img/raspberry_temp-IcingaWeb2.jpg)
 
 Example Grafana dashboard showing all my Raspberries.
-![Raspberry Temp in Grafana](img/raspberry_temp-Grafana.jpg | width=400)
+![Raspberry Temp in Grafana](img/raspberry_temp-Grafana.jpg)
 
